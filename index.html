@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Black Friday Flash Sale</title>
+    <!-- Load Tailwind CSS --><script src="https://cdn.tailwindcss.com"></script>
+    <!-- Load Inter font --><link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Roboto+Mono:wght@700&display=swap" rel="stylesheet">
+    <style>
+        /* Custom styles */
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .font-mono {
+            font-family: 'Roboto Mono', monospace;
+        }
+        /* Hide scrollbars for the roulette */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none; /* IE and Edge */
+            scrollbar-width: none; /* Firefox */
+        }
+        /* Base screen transition styles */
+        .screen {
+            transition: opacity 0.5s ease-in-out, transform 0.5s ease-in-out;
+            position: absolute;
+            /* FIX: Changed from top/left/right to inset: 0 */
+            inset: 0;
+        }
+        /* State for hiding screens */
+        .screen-hidden {
+            opacity: 0;
+            transform: scale(0.95);
+            pointer-events: none;
+        }
+        /* State for showing screens */
+        .screen-visible {
+            opacity: 1;
+            transform: scale(1);
+            pointer-events: auto;
+        }
+        
+        /* Simple pulsing animation for the map pin */
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+            50% {
+                transform: scale(1.5);
+                opacity: 0.7;
+            }
+        }
+        .animate-pulse-pin {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 flex items-center justify-center min-h-screen p-4 overflow-hidden">
+
+    <!-- Main App Container --><!-- Tweak: Changed shadow color from cyan to amber --><div class="bg-black w-full max-w-md mx-auto rounded-2xl shadow-2xl shadow-amber-500/20 overflow-hidden relative border border-gray-800">
+        <!-- FIX: Removed p-6 md:p-8. Padding is now on each screen. Adjusted min-h. --><!-- Tweak: Reduced min-height slightly to better fit map screen --><div class="relative min-h-[430px]">
+
+            <!-- === Screen 1: Timer Screen === --><!-- FIX: Added p-6 md:p-8 --><div id="timer-screen" class="screen screen-hidden text-center p-6 md:p-8">
+                <h1 class="text-3xl md:text-4xl font-black text-white uppercase">Black Friday</h1>
+                <!-- Tweak: Changed text color from cyan to amber --><h2 class="text-5xl md:text-6xl font-black text-amber-400 uppercase drop-shadow-lg">Flash Sale</h2>
+                <p class="text-gray-300 mt-4 text-lg">Hurry! Deals end in:</p>
+                <div id="timer" class="text-7xl md:text-8xl font-mono font-bold text-red-500 my-6">
+                    05:00
+                </div>
+                <!-- Tweak: Changed button color from cyan to amber --><button id="view-deals-btn" class="w-full bg-amber-500 text-black font-bold py-4 px-6 rounded-lg text-xl shadow-lg shadow-amber-500/30 transition-all hover:bg-amber-400 hover:shadow-xl hover:scale-105 transform disabled:opacity-50 disabled:cursor-not-allowed">
+                    SPIN TO WIN!
+                </button>
+            </div>
+
+            <!-- === Screen 2: Roulette Screen === --><!-- FIX: Added p-6 md:p-8 --><div id="roulette-screen" class="screen screen-hidden p-6 md:p-8">
+                <h2 class="text-3xl font-bold text-white text-center mb-6">Spin the Wheel!</h2>
+                
+                <!-- Roulette Container --><div class="relative w-full overflow-hidden mb-6">
+                    <!-- The Pointer --><div class="absolute top-1/2 left-1/2 w-0 h-0 border-l-[16px] border-r-[16px] border-t-[20px] border-t-red-500 border-l-transparent border-r-transparent z-10 drop-shadow-lg" style="transform: translate(-50%, -100px);"></div>
+                    <!-- Tweak: Changed centerline to be centered with flex --><div class="absolute top-0 left-0 right-0 h-full flex justify-center z-0" style="height: 190px;">
+                        <div class="w-1 h-full bg-red-500/30 rounded-full"></div>
+                    </div>
+                    
+                    <!-- FIX: Re-added missing roulette wheel elements --><div id="roulette-wheel-container" class="w-full h-[190px] overflow-hidden no-scrollbar relative flex items-center">
+                        <div id="roulette-wheel" class="flex h-full items-center">
+                            <!-- Items will be dynamically injected here by JS --></div>
+                    </div>
+                </div> <!-- FIX: Closed Roulette Container --><!-- FIX: Re-added missing spin button --><button id="spin-btn" class="w-full bg-amber-500 text-black font-bold py-4 px-6 rounded-lg text-xl shadow-lg shadow-amber-500/30 transition-all hover:bg-amber-400 hover:shadow-xl hover:scale-105 transform disabled:opacity-50 disabled:cursor-not-allowed">
+                    SPIN!
+                </button>
+            </div> <!-- FIX: Closed Screen 2 --><!-- === Screen 3: Prize Screen === --><!-- FIX: Moved out of Screen 2. Added p-6 md:p-8 --><div id="prize-screen" class="screen screen-hidden text-center p-6 md:p-8">
+                <!-- Fireworks Container --><div id="fireworks-container" class="absolute inset-0 z-0"></div>
+
+                <!-- FIX 1: Added break-all and responsive font-size to prevent overflow --><h2 class="text-2xl sm:text-3xl font-black text-amber-400 drop-shadow-lg z-10 relative break-all">CONGRATULATIONS!</h2>
+                <p class="text-xl text-white mt-2 mb-6 z-10 relative">You won a...</p>
+                
+                <div id="prize-display" class="z-10 relative">
+                    <!-- Winning prize will be shown here --><!-- Example:
+                    <img src="https://placehold.co/150x150/1f2937/9ca3af?text=WINNER" alt="Winning Prize" class="w-40 h-40 mx-auto rounded-lg shadow-xl border-4 border-amber-400 object-cover">
+                    <h3 class="text-3xl font-bold text-white mt-4">New Smartphone</h3>
+                    --></div>
+
+                <!-- Tweak: Changed button color from cyan to amber --><button id="get-now-btn" class="w-full bg-amber-500 text-black font-bold py-4 px-6 rounded-lg text-xl shadow-lg shadow-amber-500/30 transition-all hover:bg-amber-400 hover:shadow-xl hover:scale-105 transform mt-8 z-10 relative">
+                    GET IT NOW!
+                </button>
+            </div>
+
+            <!-- === Screen 4: Form Screen === --><!-- FIX: Moved out of Screen 2. Added p-6 md:p-8 --><div id="form-screen" class="screen screen-hidden p-6 md:p-8">
+                <h2 class="text-3xl font-bold text-white text-center mb-6">Secure Your Prize</h2>
+                <p class="text-gray-300 text-center mb-6">Enter your details below to claim your item.</p>
+                <form id="delivery-form" class="space-y-4">
+                    <div>
+                        <label for="name" class="block text-sm font-medium text-gray-300 mb-1">Full Name</label>
+                        <!-- Tweak: Changed focus ring color from cyan to amber --><input type="text" id="name" name="name" required class="w-full p-3 bg-gray-800 border border-gray-700 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500" placeholder="Jane Doe">
+                    </div>
+                    <div>
+                        <label for="email" class="block text-sm font-medium text-gray-300 mb-1">Email Address</label>
+                        <!-- Tweak: Changed focus ring color from cyan to amber --><input type="email" id="email" name="email" required class="w-full p-3 bg-gray-800 border border-gray-700 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500" placeholder="jane.doe@example.com">
+                    </div>
+                    <!-- Tweak: Changed button color from cyan to amber --><button type="submit" id="submit-form-btn" class="w-full bg-amber-500 text-black font-bold py-4 px-6 rounded-lg text-xl shadow-lg shadow-amber-500/30 transition-all hover:bg-amber-400 hover:shadow-xl hover:scale-105 transform mt-4">
+                        CLAIM PRIZE
+                    </button>
+                </form>
+            </div>
+
+            <!-- === Screen 5: Map Screen === --><!-- FIX: Moved out of Screen 2. Added p-6 md:p-8 --><div id="map-screen" class="screen screen-hidden text-center p-6 md:p-8">
+                <h2 class="text-3xl font-bold text-white mb-4">It's On The Way!</h2>
+                <!-- FIX 2: Removed max-w-xs and mx-auto, using text-center to wrap to screen width --><p class="text-gray-300 text-center mb-6">Your prize will be delivered to our downtown pickup point.</p>
+                <!-- FIX 3: Replaced placehold.co with the provided map image --><!-- Tweak: Reduced map height from h-64 to h-48 to prevent button overflow --><div class="w-full h-48 bg-gray-800 rounded-lg overflow-hidden relative border-2 border-gray-700" style="background-image: url('https://i.ibb.co/pB7kDnM3/acf-google-map-field-interface-1.png'); background-size: cover; background-position: center;">
+                    
+                    <!-- Delivery Pin --><div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center">
+                        <div class="w-5 h-5 bg-red-500 rounded-full animate-pulse-pin shadow-lg"></div>
+                        <div class="w-0 h-0 border-l-8 border-r-8 border-t-8 border-t-red-500 border-l-transparent border-r-transparent relative" style="top: -4px;"></div>
+                    </div>
+                </div>
+
+                <button id="reset-btn" class="w-full bg-gray-700 text-white font-bold py-3 px-6 rounded-lg text-lg transition-all hover:bg-gray-600 mt-6">
+                    Back to Start
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- STATE ---
+            let timerInterval;
+            let timerSeconds = 300; // 5 minutes
+            let isSpinning = false;
+            let winningPrize = null;
+            
+            // Tweak: Updated placeholder image colors to match new theme
+            // FIX: Updated prizes array with new images and names, removed non-phone items
+            // Tweak: Simplified names
+            const prizes = [
+                { name: 'iPhone 17 (Orange)', img: 'https://i.ibb.co/MD1RmjDq/iphone-17-pro-max-256-gb-orange-now-1-png.webp' },
+                { name: 'iPhone 17 (Sky Blue)', img: 'https://i.ibb.co/d4d5GpBQ/iphone-17-air-256-gb-sky-blue-now-3-png.png' },
+                { name: 'iPhone 17 (White)', img: 'https://i.ibb.co/TBWBcVY5/iphone-17-pro-max-256-gb-white-now-1-png.webp' },
+                { name: 'iPhone 16 (Titanium)', img: 'https://i.ibb.co/nM0GgJqK/iphone-16-pro-max-256-gb-natural-titanium-5-png.png' },
+                { name: 'iPhone 15 (Gold)', img: 'https://i.ibb.co/Zz15QyLS/iphone-15-pro-max-gold-256-gb-4-png.png' },
+                { name: 'iPhone 16 (Black)', img: 'https://i.ibb.co/FbR5MQcC/iphone-16-pro-max-256gb-black-titanium-e-sim-49d16277-86da-4e5f-86c6-8e5500548206-5-png.png' },
+                { name: 'iPhone (New Model)', img: 'https://i.ibb.co/NdtHsS97/66c9d46f19f4d-2024-08-24-03-39-11.webp' }
+            ];
+            // We repeat the prize list to create a seamless loop
+            const wheelPrizes = [...prizes, ...prizes, ...prizes, ...prizes, ...prizes];
+
+            // --- DOM ELEMENTS ---
+            const screens = document.querySelectorAll('.screen');
+            const timerScreen = document.getElementById('timer-screen');
+            const rouletteScreen = document.getElementById('roulette-screen');
+            const prizeScreen = document.getElementById('prize-screen');
+            const formScreen = document.getElementById('form-screen');
+            const mapScreen = document.getElementById('map-screen');
+
+            const timerEl = document.getElementById('timer');
+            const viewDealsBtn = document.getElementById('view-deals-btn');
+            
+            const rouletteWheelContainer = document.getElementById('roulette-wheel-container');
+            const rouletteWheel = document.getElementById('roulette-wheel');
+            const spinBtn = document.getElementById('spin-btn');
+
+            const prizeDisplay = document.getElementById('prize-display');
+            const getNowBtn = document.getElementById('get-now-btn');
+            const fireworksContainer = document.getElementById('fireworks-container');
+
+            const deliveryForm = document.getElementById('delivery-form');
+            const submitFormBtn = document.getElementById('submit-form-btn');
+            
+            const resetBtn = document.getElementById('reset-btn');
+
+            // --- FUNCTIONS ---
+
+            /**
+             * Shows a specific screen by ID and hides all others.
+             * @param {string} screenId The ID of the screen to show.
+             */
+            function showScreen(screenId) {
+                screens.forEach(screen => {
+                    if (screen.id === screenId) {
+                        requestAnimationFrame(() => {
+                            screen.classList.remove('screen-hidden');
+                            screen.classList.add('screen-visible');
+                        });
+                    } else {
+                        screen.classList.add('screen-hidden');
+                        screen.classList.remove('screen-visible');
+                    }
+                });
+            }
+
+            /**
+             * Formats seconds into MM:SS format.
+             * @param {number} seconds
+             */
+            function formatTime(seconds) {
+                const minutes = Math.floor(seconds / 60);
+                const remainingSeconds = seconds % 60;
+                return `${String(minutes).padStart(2, '0')}:${String(remainingSeconds).padStart(2, '0')}`;
+            }
+
+            /**
+             * Starts the countdown timer.
+             */
+            function startTimer() {
+                timerEl.textContent = formatTime(timerSeconds);
+                clearInterval(timerInterval); // Clear existing interval if any
+                timerInterval = setInterval(() => {
+                    timerSeconds--;
+                    timerEl.textContent = formatTime(timerSeconds);
+                    if (timerSeconds <= 0) {
+                        clearInterval(timerInterval);
+                        timerEl.textContent = "00:00";
+                        // Tweak: Disable button and show "SALE ENDED"
+                        viewDealsBtn.disabled = true;
+                        viewDealsBtn.textContent = 'SALE ENDED!';
+                        viewDealsBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                        viewDealsBtn.classList.remove('hover:scale-105', 'hover:bg-amber-400');
+                    }
+                }, 1000);
+            }
+
+            /**
+             * Populates the roulette wheel with prize items.
+             */
+            function populateWheel() {
+                // FIX: Add check for rouletteWheel to prevent errors if it's missing
+                if (rouletteWheel) {
+                    rouletteWheel.innerHTML = wheelPrizes.map(prize => `
+                        <div class="roulette-item flex-shrink-0 w-[150px] h-[150px] bg-gray-800 rounded-lg mx-2 flex flex-col items-center justify-center p-2 border-2 border-gray-700 transition-all duration-300">
+                            <!-- Tweak: Updated onerror placeholder --><!-- FIX: Changed object-cover to object-contain --><img src="${prize.img}" alt="${prize.name}" class="w-24 h-24 object-contain rounded-md" onerror="this.src='https://placehold.co/100x100/1f2937/f59e0b?text=Gadget'; this.onerror=null;">
+                            <span class="text-white text-sm font-bold mt-2 truncate">${prize.name}</span>
+                        </div>
+                    `).join('');
+                } else {
+                    console.error('rouletteWheel element not found!');
+                }
+            }
+
+            /**
+             * Triggers the roulette spin animation.
+             */
+            function spinWheel() {
+                // FIX: Add check for rouletteWheel/container to prevent errors
+                if (isSpinning || !rouletteWheel || !rouletteWheelContainer) return;
+                isSpinning = true;
+                spinBtn.disabled = true;
+
+                // 1. Reset wheel position without transition
+                rouletteWheel.style.transition = 'none';
+                // Tweak: Calculate a better reset position
+                const containerCenter = rouletteWheelContainer.offsetWidth / 2;
+                const itemWidth = 150 + 16; // item width + margin-x (mx-2 -> 0.5rem * 2 = 16px)
+                const startItemCenter = (itemWidth / 2);
+                const startTranslateX = containerCenter - startItemCenter;
+                rouletteWheel.style.transform = `translateX(${startTranslateX}px)`;
+
+
+                // Force browser reflow
+                void rouletteWheel.offsetWidth;
+
+                // 2. Calculate winning spin
+                const targetPrizeIndex = Math.floor(Math.random() * prizes.length);
+                winningPrize = prizes[targetPrizeIndex];
+
+                // Land on an item in the 3rd or 4th repetition to look natural
+                const baseIndex = prizes.length * 3;
+                const winningItemIndex = baseIndex + targetPrizeIndex;
+                
+                // Calculate position to center the winning item
+                const itemCenter = (winningItemIndex * itemWidth) + (itemWidth / 2);
+                
+                // Add a random "jitter" to not land perfectly every time
+                const jitter = (Math.random() - 0.5) * (itemWidth * 0.8);
+                const targetTranslateX = containerCenter - itemCenter + jitter;
+
+                // 3. Apply spin transition
+                rouletteWheel.style.transition = 'transform 6s cubic-bezier(0.25, 0.1, 0.2, 1)';
+                rouletteWheel.style.transform = `translateX(${targetTranslateX}px)`;
+
+                // 4. Handle spin end
+                setTimeout(() => {
+                    isSpinning = false;
+                    spinBtn.disabled = false;
+                    showPrize();
+                }, 6100); // 100ms after animation ends
+            }
+
+            /**
+             * Shows the winning prize and triggers fireworks.
+             */
+            function showPrize() {
+                // FIX: Add check for prizeDisplay
+                if (prizeDisplay) {
+                    prizeDisplay.innerHTML = `
+                        <!-- Tweak: Updated onerror placeholder and border color --><!-- FIX: Changed object-cover to object-contain --><img src="${winningPrize.img}" alt="${winningPrize.name}" class="w-40 h-40 mx-auto rounded-lg shadow-xl border-4 border-amber-400 object-contain" onerror="this.src='https://placehold.co/150x150/1f2937/f59e0b?text=WINNER'; this.onerror=null;">
+                        <h3 class="text-3xl font-bold text-white mt-4">${winningPrize.name}</h3>
+                    `;
+                }
+                showScreen('prize-screen');
+                triggerFireworks();
+            }
+
+            /**
+             * Creates a simple firework particle explosion.
+             */
+            function triggerFireworks() {
+                // FIX: Add check for fireworksContainer
+                if (!fireworksContainer) return;
+
+                // Clear any old fireworks
+                fireworksContainer.innerHTML = '';
+                
+                // Tweak: Replaced cyan with amber
+                const colors = ['#f59e0b', '#ec4899', '#eab308', '#f1f5f9'];
+                for (let i = 0; i < 40; i++) {
+                    const particle = document.createElement('div');
+                    particle.classList.add('absolute', 'rounded-full');
+                    particle.style.width = `${Math.floor(Math.random() * 4) + 2}px`;
+                    particle.style.height = particle.style.width;
+                    particle.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                    
+                    // Start in the center (relative to the prize)
+                    particle.style.top = '40%';
+                    particle.style.left = '50%';
+                    particle.style.transform = 'translate(-50%, -50%)';
+                    particle.style.opacity = 1;
+
+                    fireworksContainer.appendChild(particle);
+
+                    // Animate outwards
+                    const angle = Math.random() * Math.PI * 2;
+                    const distance = 50 + Math.random() * 120; // 50px to 170px radius
+                    const x = Math.cos(angle) * distance;
+                    const y = Math.sin(angle) * distance;
+                    
+                    // Use Web Animations API for smooth animation
+                    particle.animate([
+                        { transform: 'translate(-50%, -50%) scale(1)', opacity: 1 },
+                        { transform: `translate(calc(-50% + ${x}px), calc(-50% + ${y}px)) scale(0)`, opacity: 0 }
+                    ], {
+                        duration: 800 + Math.random() * 400, // 800ms to 1200ms
+                        easing: 'cubic-bezier(0.1, 0.7, 0.3, 1)',
+                        fill: 'forwards'
+                    });
+
+                    // Remove particle after animation
+                    setTimeout(() => {
+                        if (particle) {
+                            particle.remove();
+                        }
+                    }, 1200);
+                }
+            }
+
+            /**
+             * Handles the submission of the delivery form.
+             */
+            function handleFormSubmit(e) {
+                e.preventDefault();
+                const name = document.getElementById('name').value;
+                const email = document.getElementById('email').value;
+                
+                if (name && email) {
+                    console.log('Form submitted:', { name, email, prize: winningPrize.name });
+                    showScreen('map-screen');
+                }
+            }
+            
+            /**
+             * Resets the app to the initial timer screen.
+             */
+            function resetApp() {
+                clearInterval(timerInterval);
+                timerSeconds = 300;
+                // FIX: Add check for timerEl
+                if (timerEl) {
+                    startTimer();
+                }
+                // FIX: Add check for deliveryForm
+                if (deliveryForm) {
+                    deliveryForm.reset();
+                }
+
+                // Tweak: Re-enable the main button on reset
+                // FIX: Add check for viewDealsBtn
+                if (viewDealsBtn) {
+                    viewDealsBtn.disabled = false;
+                    viewDealsBtn.textContent = 'SPIN TO WIN!';
+                    viewDealsBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                    viewDealsBtn.classList.add('hover:scale-105', 'hover:bg-amber-400');
+                }
+                
+                showScreen('timer-screen');
+            }
+
+            // --- EVENT LISTENERS ---
+            // FIX: Add null checks for all event listeners
+            if (viewDealsBtn) viewDealsBtn.addEventListener('click', () => showScreen('roulette-screen'));
+            if (spinBtn) spinBtn.addEventListener('click', spinWheel);
+            if (getNowBtn) getNowBtn.addEventListener('click', () => showScreen('form-screen'));
+            if (deliveryForm) deliveryForm.addEventListener('submit', handleFormSubmit);
+            if (resetBtn) resetBtn.addEventListener('click', resetApp);
+
+            // --- INITIALIZATION ---
+            populateWheel();
+            // FIX: Add check for timerEl
+            if (timerEl) {
+                startTimer();
+            }
+            showScreen('timer-screen'); // Start on the timer screen
+        });
+    </script>
+</body>
+</html>
+
+
